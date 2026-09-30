@@ -220,6 +220,11 @@ table.out .s{font-size:10px;color:var(--muted)}
 .outhead h2{font-size:15px;margin:0 0 2px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:10}
 .toast.on{opacity:1}
+.updbar{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:space-between;padding:8px 16px calc(8px) 16px;padding-top:calc(8px + env(safe-area-inset-top,0px));background:var(--accent);color:var(--accent-ink);font-size:13.5px}
+.updbar .updbtns{display:flex;gap:6px}
+.updbar .btn{border-color:var(--accent-ink)}
+.updbar .btn.primary{background:var(--accent-ink);color:var(--accent)}
+.updbar a.btn{text-decoration:none}
 .shareprob{max-width:760px;margin:0 auto 14px;background:var(--warn-soft);border:1px solid var(--warn);border-radius:10px;padding:12px 14px;display:grid;gap:6px;color:var(--ink);font-size:14px}
 .shareprob > b{color:var(--warn)}
 .shareprob p{margin:0}
@@ -313,7 +318,7 @@ body.hosted #b-print{display:none!important}
   <div class="bar-inner">
     <div class="brand">
       <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="1.5" width="16" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 6.5h8M6 10h8M6 13.5h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      Pre-op List Prep <span class="ver" title="Version of this tool">v30 Sep 2026p</span>
+      Pre-op List Prep <span class="ver" title="Version of this tool">v30 Sep 2026q</span>
     </div>
     <div class="meta" id="meta" hidden>
       <span>Date <input id="m-date" size="10"></span>
@@ -1439,6 +1444,43 @@ const DEMO = `<p>Example NHS Trust</p><p>Surgery List</p>
 </table>`;
 
 renderAll();
+
+/* ---------- new-version notice ----------
+   Every copy (website, installed app, downloaded file) checks the published version file and offers the update. */
+const SITE = 'https://nickjcowley.github.io/preop-list-prep/';
+const MY_VERSION = (document.querySelector('.ver')?.textContent || '').trim();
+function buildNo(label){ // "v30 Sep 2026q" -> 2026093017 (date, then the letter's position)
+  const m = String(label).match(/v?(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})([a-z]?)/); if (!m) return 0;
+  const mon = 'janfebmaraprmayjunjulaugsepoctnovdec'.indexOf(m[2].toLowerCase()) / 3 + 1;
+  return ((+m[3] * 100 + mon) * 100 + +m[1]) * 100 + (m[4] ? m[4].charCodeAt(0) - 96 : 0);
+}
+let lastCheck = 0, updArmed = false;
+async function checkForUpdate(force){
+  if (!force && Date.now() - lastCheck < 15 * 60 * 1000) return; lastCheck = Date.now();
+  if (!navigator.onLine) return;
+  try {
+    const r = await fetch(SITE + 'version.json?t=' + Date.now(), {cache: 'no-store'}); if (!r.ok) return;
+    const v = await r.json();
+    if (buildNo(v.version) > buildNo(MY_VERSION)) showUpdate(v);
+  } catch (err) { /* offline or blocked: try again later */ }
+}
+function showUpdate(v){
+  let bar = $('#updbar');
+  if (!bar){ bar = document.createElement('div'); bar.id = 'updbar'; bar.className = 'updbar'; bar.setAttribute('role', 'status'); document.body.prepend(bar); }
+  const local = location.protocol === 'file:';
+  bar.innerHTML = `<span><b>New version available</b> · ${esc(v.version)}${v.notes ? ' · ' + esc(v.notes) : ''}</span>
+    <span class="updbtns">${local ? `<a class="btn small primary" href="${SITE}" target="_blank" rel="noopener">Download it</a>` : `<button class="btn small primary" type="button" id="updgo">Update now</button>`}<button class="btn small" type="button" id="updx" aria-label="Dismiss">Later</button></span>`;
+  $('#updx').onclick = () => bar.remove();
+  const go = $('#updgo');
+  if (go) go.onclick = async () => {
+    if (list && dirty && !updArmed){ updArmed = true; go.textContent = 'Unsaved list: tap again to update'; toast('Save your list first (Save Word file), or tap again to update anyway.', 5000); setTimeout(() => { updArmed = false; if (go.isConnected) go.textContent = 'Update now'; }, 5000); return; }
+    try { const reg = await navigator.serviceWorker?.getRegistration(); await reg?.update(); } catch (e) {}
+    location.reload();
+  };
+}
+addEventListener('load', () => setTimeout(() => checkForUpdate(true), 1500));
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(false); });
+setInterval(() => checkForUpdate(false), 60 * 60 * 1000);
 
 /* ---------- installed app: offline copy, files shared or opened into it ---------- */
 function showShareProblem(info, texts, code){
