@@ -1,0 +1,44 @@
+{
+  "name": "Pre-op List Prep",
+  "short_name": "Pre-op Prep",
+  "description": "Bluespier theatre list → anaesthetic pre-op sheet. Runs on your device; nothing is uploaded.",
+  "id": "./preop-list-prep.html",
+  "start_url": "./preop-list-prep.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f3f5f7",
+  "theme_color": "#1f5b8f",
+  "lang": "en-GB",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "share_target": {
+    "action": "./share-target",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        {
+          "name": "list",
+          "accept": [
+            ".docx", ".rtf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/rtf", "text/rtf", "application/msword"
+          ]
+        }
+      ]
+    }
+  },
+  "file_handlers": [
+    {
+      "action": "./preop-list-prep.html",
+      "accept": {
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+        "application/rtf": [".rtf"]
+      }
+    }
+  ]
+}

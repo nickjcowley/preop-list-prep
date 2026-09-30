@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Pre-op List Prep</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1f5b8f">
+<link rel="icon" type="image/png" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="description" content="Bluespier theatre list to anaesthetic pre-op sheet. Runs in your browser; patient details are never uploaded.">
 <style>
 /* Layout: one centred download card, then a short "how to use" strip; deliberately light-only to match the tool itself */
@@ -42,6 +46,13 @@ a.btn{text-decoration:none}
 .status{font-size:13.5px;min-height:1.2em}
 .status.ok{color:var(--ok)} .status.warn{color:var(--warn)}
 h2{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0}
+.install{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.install div{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:4px;align-content:start;font-size:13.5px;line-height:1.45}
+.install b{font-size:14px}
+.install .how{color:var(--muted)}
+.install .extra{font-size:12.5px;color:var(--accent);font-weight:600}
+#installBtn{justify-self:start}
+@media (max-width:640px){ .install{grid-template-columns:minmax(0,1fr)} }
 .steps{list-style:none;margin:0;padding:0;display:grid;gap:10px;counter-reset:s}
 .steps li{counter-increment:s;display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:start}
 .steps li::before{content:counter(s);width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font:700 13px var(--font-data);display:grid;place-items:center}
@@ -71,9 +82,23 @@ h2{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--mute
           Download for offline use
         </a>
       </div>
-      <div class="meta"><span>Version <b>v30 Sep 2026g</b></span><span>92 KB · single file, no install</span></div>
+      <div class="meta"><span>Version <b>v30 Sep 2026h</b></span><span>94 KB · single file, no install</span></div>
     </div>
     <p class="note"><b>Open</b> always runs the newest version. <b>Download</b> saves a copy that works without internet; come back here for updates, and check the version label beside the tool's title.</p>
+  </section>
+
+  <section class="card">
+    <h2>Install it as an app</h2>
+    <p class="note" style="font-size:14px">Adding it to your phone, tablet or computer gives it its own icon, opens it full screen and lets it work without internet. It updates itself whenever you're online.</p>
+    <button class="btn" id="installBtn" type="button" hidden>
+      <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v10m0 0-4-4m4 4 4-4M4 16h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Install Pre-op List Prep
+    </button>
+    <div class="install">
+      <div><b>iPhone / iPad</b><span class="how">Open this page in <b>Safari</b>, tap <b>Share</b> (square with arrow), then <b>Add to Home Screen</b>.</span><span class="extra">Open your list with Open list → Browse, from Files or OneDrive.</span></div>
+      <div><b>Android</b><span class="how">Open this page in <b>Chrome</b>, tap the <b>⋮</b> menu, then <b>Install app</b> (or Add to Home screen).</span><span class="extra">Then share a Word list from Outlook, Teams or Files straight to Pre-op Prep.</span></div>
+      <div><b>Windows / Mac</b><span class="how">In <b>Edge</b> or <b>Chrome</b>, click the install icon at the right of the address bar, or use the button above.</span><span class="extra">Then right-click a Word list → Open with → Pre-op List Prep.</span></div>
+    </div>
   </section>
 
   <section class="card">
@@ -88,5 +113,13 @@ h2{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--mute
   </section>
   <p class="note" style="text-align:center">Built by NJ Cowley</p>
 </div>
+<script>
+// offline copy + install button (Chrome/Edge/Android show their own prompt; iPhone uses Share → Add to Home Screen)
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
+let deferred = null; const btn = document.getElementById('installBtn');
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e; btn.hidden = false; });
+btn.addEventListener('click', async () => { if (!deferred) return; deferred.prompt(); await deferred.userChoice; deferred = null; btn.hidden = true; });
+addEventListener('appinstalled', () => { btn.hidden = true; });
+</script>
 </body>
 </html>

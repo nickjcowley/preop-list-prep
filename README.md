@@ -8,6 +8,8 @@ A single-page tool for preparing tomorrow's theatre list. Load the Bluespier lis
 
 - Runs entirely in the browser. Patient details are never uploaded; nothing is stored after the tab closes, so save the Word file when you're done (it can be reopened in the tool later).
 - Works offline too: download `preop-list-prep.html` from the front page and double-click it.
+- Installable as an app (iPhone: Safari → Share → Add to Home Screen; Android: Chrome → Install app; Edge/Chrome on a computer: install icon in the address bar). Works offline and updates itself when online.
+- On Android, Word lists can be shared straight into the installed app; on a computer, Word files can be opened with it.
 - The version label beside the title shows which version you have.
 
 Built by NJ Cowley.

@@ -3,6 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- installable app (used when served from the website; ignored when opened as a local file) -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1f5b8f">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pre-op Prep">
 <title>Pre-op List Prep</title>
 <style>
 /* Layout: sticky toolbar with list details, then one entry card per patient in list order; print/export = a single landscape table. */
@@ -292,7 +299,7 @@ body.hosted #b-print{display:none!important}
   <div class="bar-inner">
     <div class="brand">
       <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="1.5" width="16" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 6.5h8M6 10h8M6 13.5h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      Pre-op List Prep <span class="ver" title="Version of this tool">v30 Sep 2026g</span>
+      Pre-op List Prep <span class="ver" title="Version of this tool">v30 Sep 2026h</span>
     </div>
     <div class="meta" id="meta" hidden>
       <span>Date <input id="m-date" size="10"></span>
@@ -1060,9 +1067,14 @@ async function loadDocx(bytes){
     openParsed(parseDocxTables(xml));
   } catch (err){ toast(err.message || String(err), 6000); console.error(err); }
 }
+function loadBytes(bytes, name = ''){
+  if (bytes[0] === 0x50 && bytes[1] === 0x4B) return loadDocx(bytes);
+  let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i+0x8000));
+  loadText(s, name);
+}
 function loadFile(f){
   const r = new FileReader();
-  r.onload = () => { const bytes = new Uint8Array(r.result); if (bytes[0] === 0x50 && bytes[1] === 0x4B) return loadDocx(bytes); let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i+0x8000)); loadText(s, f.name); };
+  r.onload = () => loadBytes(new Uint8Array(r.result), f.name);
   r.readAsArrayBuffer(f);
 }
 function confirmReplace(){ return !list || !dirty || window.__replaceOK; }
@@ -1259,6 +1271,22 @@ const DEMO = `<p>Example NHS Trust</p><p>Surgery List</p>
 </table>`;
 
 renderAll();
+
+/* ---------- installed app: offline copy, files shared or opened into it ---------- */
+const onWeb = location.protocol === 'https:' || location.hostname === 'localhost';
+if (onWeb && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+// Android: a Word file shared to the app arrives via the service worker
+if (/[?&]shared=1/.test(location.search) && 'caches' in window){
+  history.replaceState(null, '', location.pathname);
+  caches.open('preop-shared').then(async c => {
+    const r = await c.match('shared-file'); if (!r) return;
+    const name = decodeURIComponent(r.headers.get('X-Name') || 'shared file');
+    const bytes = new Uint8Array(await r.arrayBuffer()); await c.delete('shared-file');
+    loadBytes(bytes, name);
+  }).catch(() => toast('The shared file could not be opened. Use Open list instead.', 5000));
+}
+// Computer: the installed app can be chosen to open .docx / .rtf files
+if ('launchQueue' in window) window.launchQueue.setConsumer(async params => { if (params.files && params.files.length){ const f = await params.files[0].getFile(); loadFile(f); } });
 })();
 </script>
 </body>
