@@ -215,7 +215,7 @@ table.out .s{font-size:10px;color:var(--muted)}
 .shareprob > b{color:var(--warn)}
 .shareprob p{margin:0}
 .shareprob pre{white-space:pre-wrap;word-break:break-word;font:12px var(--font-data);margin:6px 0 0;max-height:180px;overflow:auto}
-.shareprob .row{display:flex;gap:6px}
+.shareprob .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 body.hosted #b-print{display:none!important}
 /* view tabs */
 .views{display:inline-flex;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--surface)}
@@ -304,7 +304,7 @@ body.hosted #b-print{display:none!important}
   <div class="bar-inner">
     <div class="brand">
       <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="1.5" width="16" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 6.5h8M6 10h8M6 13.5h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      Pre-op List Prep <span class="ver" title="Version of this tool">v30 Sep 2026k</span>
+      Pre-op List Prep <span class="ver" title="Version of this tool">v30 Sep 2026l</span>
     </div>
     <div class="meta" id="meta" hidden>
       <span>Date <input id="m-date" size="10"></span>
@@ -1280,18 +1280,20 @@ renderAll();
 /* ---------- installed app: offline copy, files shared or opened into it ---------- */
 function showShareProblem(info, texts, code){
   const link = texts.some(t => /https?:\/\//.test(t));
-  const advice = code === '1' ? 'The app was still running its previous version. Open Pre-op Prep once, close it fully, then share again.'
+  const fname = (texts.find(t => /^[^\n\/\\]{1,120}\.(docx?|rtf)$/i.test(t.trim())) || '').trim();
+  const advice = fname ? `The app you shared from sent only the file's name (${fname}), not the file itself. Tap the button below and pick it: it's usually under Recent, Downloads or WhatsApp Documents.` : code === '1' ? 'The app was still running its previous version. Open Pre-op Prep once, close it fully, then share again.'
     : link ? 'The app you shared from sent a link to the document rather than the document itself.'
     : texts.length ? 'The app you shared from sent text rather than the Word file itself.'
     : 'No Word file came with the share.';
   const box = document.createElement('div'); box.className = 'shareprob'; box.setAttribute('role', 'alert');
-  box.innerHTML = `<b>The list didn't come through</b><p>${esc(advice)} Try sharing the file from <b>Files</b> or <b>Downloads</b> (or save the attachment there first), or use <b>Open list</b>.</p>
+  box.innerHTML = `<b>The list didn't come through</b><p>${esc(advice)}${fname ? '' : ' Try sharing the file from <b>Files</b> or <b>Downloads</b> (or save the attachment there first), or use <b>Open list</b>.'}</p>
     <details><summary>Details</summary><pre>${esc(info.join('\n') || 'nothing received')}</pre></details>
-    <div class="row"><button class="btn small" type="button" data-sp="copy">Copy details</button><button class="btn small" type="button" data-sp="close">Close</button></div>`;
+    <div class="row"><button class="btn primary" type="button" data-sp="open">${fname ? 'Find ' + esc(fname) : 'Open list…'}</button><button class="btn small" type="button" data-sp="copy">Copy details</button><button class="btn small" type="button" data-sp="close">Close</button></div>`;
   (document.querySelector('main') || document.body).prepend(box);
   box.addEventListener('click', async e => {
     const b = e.target.closest('[data-sp]'); if (!b) return;
     if (b.dataset.sp === 'close') return box.remove();
+    if (b.dataset.sp === 'open'){ box.remove(); return $('#file').click(); }
     try { await navigator.clipboard.writeText(info.join('\n')); b.textContent = 'Copied'; } catch { b.textContent = 'Copy failed'; }
   });
 }
