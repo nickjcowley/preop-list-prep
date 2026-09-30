@@ -311,7 +311,7 @@ body.hosted #b-print{display:none!important}
   <div class="bar-inner">
     <div class="brand">
       <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="1.5" width="16" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 6.5h8M6 10h8M6 13.5h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      Pre-op List Prep <span class="ver" title="Version of this tool">v30 Sep 2026m</span>
+      Pre-op List Prep <span class="ver" title="Version of this tool">v30 Sep 2026n</span>
     </div>
     <div class="meta" id="meta" hidden>
       <span>Date <input id="m-date" size="10"></span>
@@ -1064,10 +1064,112 @@ function openSaved(d){
   resetHistory(); renderAll(); setView(isSmall() ? 'ward' : 'editor', 0); dirty = false; toast('Reopened your saved assessments');
 }
 function openParsed(parsed){
-  list = buildList(parsed);
-  resetHistory(); renderAll(); setView(isSmall() ? 'ward' : 'editor', 0); dirty = false;
-  toast(`Loaded ${list.patients.length} patients`);
+  const own = rebuildFromOwnTable(parsed);   // one of our own saved sheets whose hidden data was lost
+  list = own || buildList(parsed);
+  resetHistory(); renderAll(); setView(isSmall() ? 'ward' : 'editor', 0); dirty = !!own;
+  toast(own ? `Rebuilt ${list.patients.length} patient${list.patients.length === 1 ? '' : 's'} from the saved table. Check the entries, then save again.` : `Loaded ${list.patients.length} patients`, own ? 7000 : 2600);
   document.querySelector('.pt input[data-k=ht]')?.focus();
+}
+/* ---------- rebuilding a list from our own printed table ----------
+   Used when a saved sheet has lost its hidden data (e.g. an .rtf re-saved in Word). */
+function rebuildFromOwnTable({rows, loose}){
+  const hIdx = rows.findIndex(r => r.some(c => /^\s*patient\s*$/i.test(c)) && r.some(c => /^\s*procedure\s*$/i.test(c)) && r.some(c => /airway|pmh/i.test(c)));
+  if (hIdx < 0) return null;
+  const head = rows[hIdx].map(c => clean(c).toLowerCase());
+  const col = re => head.findIndex(h => re.test(h));
+  const C = {pt: col(/^patient$/), proc: col(/^procedure$/), meas: col(/ht|wt|bmi/), bl: col(/bloods/), ix: col(/^ix|investig/), pmh: col(/^pmh/), psh: col(/^psh/), dh: col(/drug/), alg: col(/allerg/), aw: col(/airway/), plan: col(/asa|plan/)};
+  const cellLines = (r, k) => C[k] >= 0 && r[C[k]] != null ? String(r[C[k]]).replace(/\r/g, '').split('\n').map(x => x.replace(/\t/g, ' ').trim()).filter(Boolean) : [];
+  const text = [...rows.slice(0, hIdx).map(r => r.join('\n')), ...loose].join('\n');
+  const tm = text.match(/Pre-op assessment\s*·\s*(?:Theatre\s*([^·\n]+?)\s*·\s*)?(\d{1,2}\/\d{1,2}\/\d{2,4})?/i);
+  const grab = re => { const m = text.match(re); return m ? clean(m[1]) : ''; };
+  const meta = {surgeon: grab(/Surgeon:\s*([^|\n]+)/i), anaes: grab(/Anaesthetist:\s*([^|\n]+)/i), timing: grab(/List:\s*([^|\n]+)/i),
+    theatre: tm && tm[1] ? clean(tm[1]) : '', date: tm && tm[2] ? tm[2] : '', trust: ''};
+  const patients = [];
+  for (const r of rows.slice(hIdx + 1)){
+    if (!r.some(c => clean(c))) continue;
+    const o = {};
+    // patient: name, Call me, Hosp, NHS, "F · 41y · DOB", ward, priority
+    const pl = cellLines(r, 'pt'); o.name = pl.shift() || '';
+    for (const l of pl){
+      let m;
+      if ((m = l.match(/^Call me:\s*(.*)/i))) o.callme = m[1];
+      else if ((m = l.match(/^Hosp\s+(.*)/i))) o.hosp = m[1];
+      else if ((m = l.match(/^NHS\s+(.*)/i))) o.nhs = m[1];
+      else if ((m = l.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/)) && /·/.test(l)){ o.dob = m[1]; const sx = l.split('·')[0].trim(); o.sex = /^m/i.test(sx) ? 'Male' : /^f/i.test(sx) ? 'Female' : sx; }
+      else if (/^(urgent|routine|soon|expedited|cancer|2ww|priority)/i.test(l)) o.prio = l;
+      else o.ward = o.ward ? o.ward + ' ' + l : l;
+    }
+    // procedure: lines, last may be the anaesthetic type
+    const pr = cellLines(r, 'proc'); const an = { GA: 'General Anaesthetic', LA: 'Local Anaesthetic', Spinal: 'Spinal', Sedation: 'Sedation' };
+    if (pr.length > 1 && an[pr[pr.length - 1]]) o.anaes = an[pr.pop()];
+    o.proc = pr.join('\n');
+    // height / weight
+    for (const l of cellLines(r, 'meas')){ let m; if ((m = l.match(/([\d.]+)\s*cm/i))) o.ht = m[1]; else if ((m = l.match(/([\d.]+)\s*kg/i))) o.wt = m[1]; }
+    // bloods
+    for (const l of cellLines(r, 'bl')){
+      let m;
+      if ((m = l.match(/^Hb\s+(.*)/i))) o.hb = m[1];
+      else if ((m = l.match(/^PLT\s+(.*)/i))) o.plt = m[1];
+      else if ((m = l.match(/^INR\s+(.*)/i))) o.inr = m[1];
+      else if ((m = l.match(/^(?:G&S|GNS)\s+(\d)\/2/i))){ o.gns1 = +m[1] >= 1; o.gns2 = +m[1] >= 2; }
+      else {
+        for (const [k, P] of Object.entries(PANELS)){
+          const lab = P.label.replace(/s$/, '').replace(/[.*+?^${}()|[\]\\&]/g, '\\$&') + (/s$/.test(P.label) ? 's?' : '');
+          if ((m = l.match(new RegExp('^' + lab + '\\s*(:)?\\s*(.*)$', 'i')))){
+            const rest = m[2].trim();
+            if (/^normal$/i.test(rest)) o[k + 'S'] = 'normal';
+            else if (/^not done$/i.test(rest)) o[k + 'S'] = 'notdone';
+            else { o[k + 'S'] = 'abnormal'; const v = {};
+              if (P.text) v[P.parts[0][0]] = rest.replace(/^abnormal$/i, '');
+              else for (const piece of rest.split(/,\s*/)) for (const [pk, plab] of P.parts){ const mm = piece.match(new RegExp('^' + plab + '\\s+(.*)$', 'i')); if (mm) v[pk] = mm[1]; }
+              if (!P.text && !Object.keys(v).length){ o[k + 'S'] = ''; o[k] = rest; } else o[k + 'V'] = v; }
+            break;
+          }
+        }
+      }
+    }
+    // investigations
+    const other = [];
+    for (const l of cellLines(r, 'ix')){ let m; if ((m = l.match(/^ECG\s+(.*)/i))) o.ecg = m[1]; else if ((m = l.match(/^Echo\s+(.*)/i))) o.echo = m[1]; else if ((m = l.match(/^PFT\s+(.*)/i))) o.pft = m[1]; else other.push(l); }
+    o.inv = other.join('\n');
+    // PMH + exercise tolerance
+    const pmh = [];
+    for (const l of cellLines(r, 'pmh')){
+      const m = l.match(/^Ex tol:\s*(.*)$/i);
+      if (m){ let t = m[1]; const mm = t.match(/(?:,\s*)?([\d.]+)\s*METs(?:\s*\([^)]*\))?\s*$/i); if (mm){ o.mets = mm[1]; t = t.slice(0, mm.index).trim(); } o.extol = t; }
+      else pmh.push(l);
+    }
+    o.pmh = pmh.join('\n');
+    o.psh = cellLines(r, 'psh').join('\n'); o.dh = cellLines(r, 'dh').join('\n');
+    // allergies
+    const al = cellLines(r, 'alg');
+    if (al.length === 1 && /^nkda$/i.test(al[0])) o.nkda = true;
+    else if (al.length) o.alg = al.map(l => { const m = l.split(/\s+[–-]\s+/); return {drug: m[0] || '', reaction: m.slice(1).join(' – ')}; });
+    // airway: MP, previous grade, teeth, free text
+    const aw = []; const teeth = {};
+    for (const l of cellLines(r, 'aw')){
+      let m;
+      if ((m = l.match(/^MP\s+(unable to assess|\d)/i))) o.mp = /unable/i.test(m[1]) ? 'Unable' : m[1];
+      else if ((m = l.match(/^Previous grade\s+(\d)/i))) o.pgrade = m[1];
+      else if (/^(Caps|Loose|Gap):/i.test(l)){
+        for (const seg of l.split(/;\s*/)){ const mm = seg.match(/^(Caps|Loose|Gap):\s*(.*)$/i); if (!mm) continue; const st = {caps:'cap', loose:'loose', gap:'gap'}[mm[1].toLowerCase()]; mm[2].split(/,\s*/).forEach(t => { if (/^[UL][RL][12]$/i.test(t)) teeth[t.toUpperCase()] = st; }); }
+      } else aw.push(l);
+    }
+    o.airway = aw.join('\n'); o.teeth = teeth;
+    // ASA / plan / outstanding
+    const plan = []; let inOut = false; const outL = [];
+    for (const l of cellLines(r, 'plan')){
+      let m;
+      if (inOut){ outL.push(l); continue; }
+      if ((m = l.match(/^ASA\s+(\S+)$/i))) o.asa = m[1].toUpperCase();
+      else if (/^Outstanding:?$/i.test(l)) inOut = true;
+      else plan.push(l);
+    }
+    o.plan = plan.join('\n'); o.outstanding = outL.join(' ');
+    patients.push(blankPatient(o));
+  }
+  if (!patients.length) return null;
+  return {meta, patients};
 }
 function loadText(text, name=''){
   try {
