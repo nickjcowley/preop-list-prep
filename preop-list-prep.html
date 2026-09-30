@@ -108,7 +108,7 @@ main{max-width:1180px;margin:0 auto;padding-block:12px 60px;padding-inline:16px}
 .pill.urgent{background:var(--crit-soft);color:var(--crit);border-color:transparent}
 .pill.done{background:var(--ok-soft);color:var(--ok);border-color:transparent}
 .pill.part{background:var(--warn-soft);color:var(--warn);border-color:transparent}
-.ctl{display:flex;gap:4px}
+.ctl{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end}
 
 .body{padding:8px 12px 10px;display:grid;gap:8px}
 .nums{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}
@@ -160,10 +160,12 @@ main{max-width:1180px;margin:0 auto;padding-block:12px 60px;padding-inline:16px}
 .mets{display:flex;gap:4px;align-items:center;text-transform:none;letter-spacing:0;font-size:11px;color:var(--muted);font-weight:600}
 .mets input{width:5ch!important}
 .mets-hint{font-size:11px}
+.extol textarea{resize:vertical;min-height:30px;line-height:1.3;font:inherit;font-size:13px}
 .extol input{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:var(--r);padding:5px 7px}
 .inv-row{display:grid;grid-template-columns:44px minmax(0,1fr);gap:2px 6px;align-items:center}
 .inv-row label{text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--ink)}
 .inv-row .chips{grid-column:2}
+.inv-row textarea{resize:vertical;min-height:30px;line-height:1.3;font-size:13px}
 .inv-row input,.inv-row textarea{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:var(--r);padding:5px 7px}
 .tooth.loose,.teeth-key .loose{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
 .teeth-key{font-size:11px;color:var(--muted);display:grid;gap:4px}
@@ -276,7 +278,7 @@ body.hosted #b-print{display:none!important}
 @media (max-width:900px){
   .pt-head{grid-template-columns:auto minmax(0,1fr)}
   .proc{grid-column:2}
-  .headside{grid-column:1 / -1;flex-direction:row;justify-content:space-between;align-items:center}
+  .headside{grid-column:1 / -1;flex-direction:row;flex-wrap:wrap;gap:6px;justify-content:space-between;align-items:center}
   .nums,.body > .nums:not(.details .nums){grid-template-columns:repeat(4,minmax(0,1fr))}
   .texts{grid-template-columns:repeat(2,minmax(0,1fr))}
   .bloods{grid-template-columns:repeat(6,minmax(0,1fr))}
@@ -311,7 +313,7 @@ body.hosted #b-print{display:none!important}
   <div class="bar-inner">
     <div class="brand">
       <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="1.5" width="16" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 6.5h8M6 10h8M6 13.5h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      Pre-op List Prep <span class="ver" title="Version of this tool">v30 Sep 2026o</span>
+      Pre-op List Prep <span class="ver" title="Version of this tool">v30 Sep 2026p</span>
     </div>
     <div class="meta" id="meta" hidden>
       <span>Date <input id="m-date" size="10"></span>
@@ -401,7 +403,7 @@ let seq = 1;
 const TEXTS = [
   {k:'pmh', label:'Past medical history', chips:['Nil','HTN','T1DM','T2DM','Asthma','COPD','OSA','CPAP','GORD','IHD','AF','Stroke','Anxiety','Depression']},
   {k:'psh', label:'Past surgical / anaesthetic hx', chips:['Nil','Previous GA uneventful','No FHx anaesthetic problems','PONV']},
-  {k:'dh', label:'Drug history', chips:['Nil regular','*anticoag/antiplatelet*','Stopped 1/52']},
+  {k:'dh', label:'Drug history', chips:['Nil regular','*anti-coag/anti-platelet - enter name*','Stopped 1/52']},
   {k:'allergies'},
   {k:'inv'},
   {k:'airway', label:'Airway', chips:['Good neck extension','Edentulous','Poor dentition']},
@@ -661,15 +663,17 @@ function cardHtml(p, i){
       <div class="texts">
         ${TEXTS.map(t => t.k === 'allergies' ? '' : t.k === 'inv' ? invHtml(p) : `${t.k === 'dh' ? '<div class="pair span2">' : ''}<div class="f${t.k === 'plan' ? ' span2' : ''}"><label for="f-${p.id}-${t.k}">${t.label}</label>${t.k === 'airway' ? airwayExtras(p) : ''}
           <textarea id="f-${p.id}-${t.k}" data-k="${t.k}" rows="2">${esc(p[t.k])}</textarea>
-          ${t.chips.length ? `<div class="chips">${t.chips.map(c=>`<button class="chip" type="button" data-chip="${esc(c)}" data-for="${t.k}">${esc(c)}</button>`).join('')}</div>` : ''}${t.k === 'pmh' ? exTolHtml(p) : ''}</div>${t.k === 'dh' ? allergyHtml(p) + '</div>' : ''}`).join('')}
+          ${t.chips.length ? `<div class="chips">${t.chips.map(c=>`<button class="chip" type="button" data-chip="${esc(c)}" data-for="${t.k}">${esc(chipLabel(c))}</button>`).join('')}</div>` : ''}${t.k === 'pmh' ? exTolHtml(p) : ''}</div>${t.k === 'dh' ? allergyHtml(p) + '</div>' : ''}`).join('')}
       </div>
       <div class="status">
         <label class="done-box"><input type="checkbox" data-k="complete"${p.complete?' checked':''}> Complete</label>
-        <div class="f out-f"><label for="f-${p.id}-outstanding">Outstanding</label><input id="f-${p.id}-outstanding" data-k="outstanding" autocomplete="off" value="${esc(p.outstanding)}" placeholder="Anything still to do, e.g. chase echo report, repeat K+, 2nd G&amp;S"></div>
+        <div class="f out-f"><label for="f-${p.id}-outstanding">Outstanding</label><textarea id="f-${p.id}-outstanding" data-k="outstanding" rows="1" placeholder="Anything still to do, e.g. chase echo report, repeat K+, 2nd G&amp;S">${esc(p.outstanding)}</textarea></div>
       </div>
     </div>
   </article>`;
 }
+// placeholder chips like *anti-coag/anti-platelet - enter name* show a short label on the button
+const chipLabel = c => /^\*.+\*$/.test(c) ? c.slice(1, -1).replace(/\s*-\s*enter name$/i, '') + '…' : c;
 const REACTIONS = ['Anaphylaxis','Swelling','Rash','Unknown'];
 // what a MET score means in everyday activity (1-2 words for the table)
 function metsMeaning(v){
@@ -708,7 +712,7 @@ function panelLine(p, k, L){
 }
 function exTolHtml(p){
   return `<div class="extol"><label for="f-${p.id}-extol">Exercise tolerance</label>
-    <div class="extol-row"><input id="f-${p.id}-extol" data-k="extol" value="${esc(p.extol)}" autocomplete="off" placeholder="e.g. 2 flights of stairs, limited by SOB">
+    <div class="extol-row"><textarea id="f-${p.id}-extol" data-k="extol" rows="1" placeholder="e.g. 2 flights of stairs, limited by SOB">${esc(p.extol)}</textarea>
     <label class="mets"><span>METs</span><input id="f-${p.id}-mets" data-k="mets" value="${esc(p.mets)}" class="num-in" inputmode="decimal" autocomplete="off" aria-label="METs"></label></div>
     <div class="hint mets-hint" data-metshint></div>
     <div class="chips">${['Unlimited','1 flight','<1 flight','Housebound'].map(c => `<button class="chip" type="button" data-chip="${esc(c)}" data-for="extol">${esc(c)}</button>`).join('')}</div></div>`;
@@ -717,7 +721,7 @@ const INV = [['ecg','ECG',['SR','ST','AF','VE','Not done']], ['echo','Echo',['No
 function invHtml(p){
   return `<div class="f inv"><span class="lbl">Investigations</span>
     ${INV.map(([k, l, chips]) => `<div class="inv-row"><label for="f-${p.id}-${k}">${l}</label>
-      <input id="f-${p.id}-${k}" data-k="${k}" value="${esc(p[k])}" autocomplete="off">
+      <textarea id="f-${p.id}-${k}" data-k="${k}" rows="1">${esc(p[k])}</textarea>
       <div class="chips">${chips.map(c => `<button class="chip" type="button" data-chip="${c}" data-for="${k}">${c}</button>`).join('')}</div></div>`).join('')}
     <div class="inv-row"><label for="f-${p.id}-inv">Other</label><textarea id="f-${p.id}-inv" data-k="inv" rows="1">${esc(p.inv)}</textarea></div>
   </div>`;
@@ -794,7 +798,12 @@ const itemRe = v => new RegExp('(^|,\\s*|\\n)' + escRe(v) + '(?=\\s*(,|\\n|$))',
 function hasItem(str, v){ return itemRe(v).test(String(str || '').trim()); }
 function removeItem(str, v){ return String(str).trim().replace(itemRe(v), '').replace(/^(\s*,\s*|\n)+/, '').replace(/(\s*,\s*)+$/, '').trim(); }
 function rerenderAlg(p, card){ const box = card.querySelector('[data-algbox]'); box.outerHTML = allergyHtml(p); dirty = true; }
-function autoGrow(t){ t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight + 2, 320) + 'px'; }
+function autoGrow(t){
+  if (!t.offsetParent) return; // hidden (e.g. Ward view showing): size it when it becomes visible
+  t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight + 2, 480) + 'px';
+}
+const growAll = () => document.querySelectorAll('#editor textarea').forEach(autoGrow);
+let growT; addEventListener('resize', () => { clearTimeout(growT); growT = setTimeout(growAll, 150); });
 
 /* ---------- undo / redo ---------- */
 let undoStack = [], redoStack = [], lastKey = null, lastTime = 0;
@@ -884,7 +893,7 @@ document.addEventListener('click', e => {
     const a = act.dataset.act;
     if (a === 'up' && ix > 0){ list.patients.splice(ix-1, 0, list.patients.splice(ix,1)[0]); renderAll(); document.querySelector(`#pt-${p.id} [data-act=up]`)?.focus(); }
     else if (a === 'down' && ix < list.patients.length-1){ list.patients.splice(ix+1, 0, list.patients.splice(ix,1)[0]); renderAll(); document.querySelector(`#pt-${p.id} [data-act=down]`)?.focus(); }
-    else if (a === 'details'){ const d = card.querySelector('.details'); d.hidden = !d.hidden; if (!d.hidden) d.querySelector('input').focus(); else renderAll(); }
+    else if (a === 'details'){ const d = card.querySelector('.details'); d.hidden = !d.hidden; if (!d.hidden){ d.querySelectorAll('textarea').forEach(autoGrow); d.querySelector('input').focus(); } else renderAll(); }
     else if (a === 'nkda'){ p.nkda = !p.nkda; act.classList.toggle('on', p.nkda); card.querySelector('.alg-rows').hidden = p.nkda; }
     else if (a === 'algadd'){ p.alg.push({drug:'', reaction:''}); rerenderAlg(p, card); card.querySelector(`[data-alg="drug"][data-row="${p.alg.length-1}"]`).focus(); }
     else if (a === 'algdel'){ p.alg.splice(+act.dataset.row, 1); if (!p.alg.length) p.alg.push({drug:'', reaction:''}); rerenderAlg(p, card); }
@@ -1228,11 +1237,12 @@ function setView(v, ix){
   document.body.classList.toggle('ward-mode', v === 'ward');
   if (v === 'table') renderTable();
   if (v === 'ward') renderWard();
+  if (v === 'editor') requestAnimationFrame(growAll);
   scrollTo(0, 0);
 }
 document.querySelectorAll('.vt').forEach(b => b.onclick = () => setView(b.dataset.view));
 
-const ANTICOAG = /anticoag|antiplatelet|apixaban|rivaroxaban|edoxaban|dabigatran|warfarin|clopidogrel|ticagrelor|prasugrel|enoxaparin|dalteparin|tinzaparin|heparin/i;
+const ANTICOAG = /anti-?coag|anti-?platelet|apixaban|rivaroxaban|edoxaban|dabigatran|warfarin|clopidogrel|ticagrelor|prasugrel|enoxaparin|dalteparin|tinzaparin|heparin/i;
 function wardAlerts(p){
   const a = []; const b = bmi(p);
   const alg = p.alg.filter(x => x.drug.trim());
