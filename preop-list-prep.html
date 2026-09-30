@@ -318,7 +318,7 @@ body.hosted #b-print{display:none!important}
   <div class="bar-inner">
     <div class="brand">
       <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="1.5" width="16" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 6.5h8M6 10h8M6 13.5h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      Pre-op List Prep <span class="ver" title="Version of this tool">v30 Sep 2026q</span>
+      Pre-op List Prep <span class="ver" title="Version of this tool">v30 Sep 2026r</span>
     </div>
     <div class="meta" id="meta" hidden>
       <span>Date <input id="m-date" size="10"></span>
@@ -384,7 +384,7 @@ body.hosted #b-print{display:none!important}
       <button class="demo" id="b-demo-full" type="button"><b>See a completed example</b><span>Four patients with every field filled in, to show everything the tool captures, flags and prints.</span></button>
     </div>
     </div>
-    <p class="privacy">Everything stays in this browser window. Nothing is uploaded, and nothing is kept after you close the tab, so save the Word file when you're done. You can reopen that saved file here later to carry on editing.</p>
+    <p class="privacy">Everything stays in this browser window. Nothing is uploaded, and nothing is kept after you close the tab, so save the Word file when you're done. You can reopen that saved file here later to carry on editing. Anonymous usage counts (such as "a list was loaded") are collected to see how much the tool is used; nothing you type is ever sent.</p>
   </section>
 
   <div class="summary" id="summary" hidden></div>
@@ -399,6 +399,25 @@ body.hosted #b-print{display:none!important}
 <script>
 (() => {
 'use strict';
+
+/* ---------- anonymous usage counts (GoatCounter) ----------
+   Only fixed labels are sent, e.g. "event/list-loaded". Nothing typed into the tool, no names, no file names. */
+const GC_ENDPOINT = 'https://nickjc.goatcounter.com/count';
+const gcQueue = []; const gcOnce = new Set();
+function track(name, {pageview = false, once = false} = {}){
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return; // not while testing
+  if (once){ if (gcOnce.has(name)) return; gcOnce.add(name); }
+  const hit = {path: pageview ? name : 'event/' + name, title: name, event: !pageview};
+  if (window.goatcounter && typeof window.goatcounter.count === 'function'){ try { window.goatcounter.count(hit); } catch (e) {} }
+  else gcQueue.push(hit);
+}
+(function loadCounter(){
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return;
+  window.goatcounter = {no_onload: true, allow_local: true, allow_frame: true};
+  const sc = document.createElement('script'); sc.async = true; sc.src = 'https://gc.zgo.at/count.js'; sc.dataset.goatcounter = GC_ENDPOINT;
+  sc.onload = () => { while (gcQueue.length){ try { window.goatcounter.count(gcQueue.shift()); } catch (e) {} } };
+  document.head.appendChild(sc);
+})();
 
 /* ---------- state ---------- */
 let list = null;          // {meta:{...}, patients:[...]}
@@ -1063,24 +1082,26 @@ async function saveDocx(){
   const blob = buildDocx(); const name = fileName();
   if (window.claude){
     if (!downloadsCap){ toast('Saving files is not available here. Use Copy table instead.', 5000); return; }
-    try { await downloadsCap.save({filename: name, data: blob}); dirty = false; toast('Saved ' + name); }
+    try { await downloadsCap.save({filename: name, data: blob}); dirty = false; toast('Saved ' + name); track('word-saved'); }
     catch (err){ if (err && err.code !== 'declined') toast('Could not save the file here (' + (err.code || 'error') + '). Use Copy table instead.', 5000); }
     return;
   }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-  dirty = false; toast('Saved ' + name);
+  dirty = false; toast('Saved ' + name); track('word-saved');
 }
 
 /* ---------- import ---------- */
 function openSaved(d){
   list = {meta: d.meta, patients: d.patients.map(p => blankPatient({...p, id: seq++}))};
   resetHistory(); renderAll(); setView(isSmall() ? 'ward' : 'editor', 0); dirty = false; toast('Reopened your saved assessments');
+  track('list-reopened');
 }
 function openParsed(parsed){
   const own = rebuildFromOwnTable(parsed);   // one of our own saved sheets whose hidden data was lost
   list = own || buildList(parsed);
   resetHistory(); renderAll(); setView(isSmall() ? 'ward' : 'editor', 0); dirty = !!own;
+  if (!loadingExample) track(own ? 'list-rebuilt' : 'list-loaded');
   toast(own ? `Rebuilt ${list.patients.length} patient${list.patients.length === 1 ? '' : 's'} from the saved table. Check the entries, then save again.` : `Loaded ${list.patients.length} patients`, own ? 7000 : 2600);
   document.querySelector('.pt input[data-k=ht]')?.focus();
 }
@@ -1242,6 +1263,7 @@ function setView(v, ix){
   document.body.classList.toggle('ward-mode', v === 'ward');
   if (v === 'table') renderTable();
   if (v === 'ward') renderWard();
+  if (v === 'ward' || v === 'table') track('view-' + v, {once: true});
   if (v === 'editor') requestAnimationFrame(growAll);
   scrollTo(0, 0);
 }
@@ -1320,7 +1342,7 @@ addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft' && wardIx > 0){ wardIx--; renderWard(); }
 });
 const isSmall = () => matchMedia('(max-width: 700px), (pointer: coarse) and (max-width: 1366px)').matches; // phones and tablets open in Ward view
-$('#b-print').onclick = () => { renderTable(); $('#tableview').hidden = false; window.print(); $('#tableview').hidden = view !== 'table'; };
+$('#b-print').onclick = () => { track('printed'); renderTable(); $('#tableview').hidden = false; window.print(); $('#tableview').hidden = view !== 'table'; };
 $('#b-save').onclick = saveDocx;
 // When running as a published claude.ai page: saving goes through the viewer's download prompt, and printing is not possible
 if (window.claude){
@@ -1332,7 +1354,7 @@ $('#b-copy').onclick = async () => {
   const plain = [OUT_HEAD.join('\t'), ...outRows().map(r => r.map(c => c.map(l => l.t).join(' / ').replace(/\n/g,' ')).join('\t'))].join('\n');
   try {
     await navigator.clipboard.write([new ClipboardItem({'text/html': new Blob([html], {type:'text/html'}), 'text/plain': new Blob([plain], {type:'text/plain'})})]);
-    toast('Table copied. Paste into Word or an email.');
+    toast('Table copied. Paste into Word or an email.'); track('table-copied');
   } catch {
     const box = document.createElement('div'); box.innerHTML = html; box.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(box);
     const range = document.createRange(); range.selectNodeContents(box); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range);
@@ -1341,9 +1363,10 @@ $('#b-copy').onclick = async () => {
     toast(ok ? 'Table copied. Paste into Word or an email.' : 'Copy was blocked by the browser. Use Table view and select the table instead.');
   }
 };
-$('#b-demo').onclick = () => loadText(DEMO);
+let loadingExample = false;
+$('#b-demo').onclick = () => { loadingExample = true; loadText(DEMO); loadingExample = false; track('example-try-it-yourself'); };
 $('#b-demo-full').onclick = () => {
-  loadText(DEMO);
+  loadingExample = true; loadText(DEMO); loadingExample = false; track('example-completed');
   list.patients.push(blankPatient({hosp:'0000000004', nhs:'999 000 0004', name:'TEST, David', sex:'Male', dob:'12/03/1958', ward:'Ward 18', proc:'Laparoscopic Right Hemicolectomy\n08:00 admission', anaes:'General Anaesthetic', prio:'Routine'}));
   DEMO_FULL.forEach((d, i) => { const p = list.patients[i]; Object.assign(p, JSON.parse(JSON.stringify(d))); syncObesity(p, null); });
   resetHistory(); renderAll(); setView(isSmall() ? 'ward' : 'editor', 0); dirty = false;
@@ -1475,10 +1498,13 @@ function showUpdate(v){
   if (go) go.onclick = async () => {
     if (list && dirty && !updArmed){ updArmed = true; go.textContent = 'Unsaved list: tap again to update'; toast('Save your list first (Save Word file), or tap again to update anyway.', 5000); setTimeout(() => { updArmed = false; if (go.isConnected) go.textContent = 'Update now'; }, 5000); return; }
     try { const reg = await navigator.serviceWorker?.getRegistration(); await reg?.update(); } catch (e) {}
+    track('update-accepted');
     location.reload();
   };
 }
 addEventListener('load', () => setTimeout(() => checkForUpdate(true), 1500));
+track(location.protocol === 'file:' ? 'open-offline-file' : (matchMedia('(display-mode: standalone)').matches || navigator.standalone) ? 'open-installed-app' : 'open-website', {pageview: true});
+addEventListener('appinstalled', () => track('app-installed'));
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(false); });
 setInterval(() => checkForUpdate(false), 60 * 60 * 1000);
 

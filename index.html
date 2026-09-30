@@ -73,16 +73,16 @@ h2{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--mute
     <p class="lead">Prepare tomorrow's theatre list in one place. Load the Bluespier list, add what you find in the pre-op assessment, previous anaesthetic charts, Evolve and ICE, and finish with a printable Word table or a Ward view for your phone or tablet.</p>
     <div class="dl">
       <div class="btns">
-        <a class="btn" href="preop-list-prep.html">
+        <a class="btn" href="preop-list-prep.html" data-goatcounter-click="front-open" data-goatcounter-title="front-open">
           <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Open Pre-op List Prep
         </a>
-        <a class="btn sec" href="preop-list-prep.html" download="preop-list-prep.html">
+        <a class="btn sec" href="preop-list-prep.html" download="preop-list-prep.html" data-goatcounter-click="front-download-offline" data-goatcounter-title="front-download-offline">
           <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v10m0 0-4-4m4 4 4-4M4 16h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Download for offline use
         </a>
       </div>
-      <div class="meta"><span>Version <b>v30 Sep 2026q</b></span><span>111 KB · single file, no install</span></div>
+      <div class="meta"><span>Version <b>v30 Sep 2026r</b></span><span>113 KB · single file, no install</span></div>
     </div>
     <p class="note"><b>Open</b> always runs the newest version. <b>Download</b> saves a copy that works without internet; come back here for updates, and check the version label beside the tool's title.</p>
   </section>
@@ -90,7 +90,7 @@ h2{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--mute
   <section class="card">
     <h2>Install it as an app</h2>
     <p class="note" style="font-size:14px">Adding it to your phone, tablet or computer gives it its own icon, opens it full screen and lets it work without internet. It updates itself whenever you're online.</p>
-    <button class="btn" id="installBtn" type="button" hidden>
+    <button class="btn" id="installBtn" type="button" hidden data-goatcounter-click="front-install-button" data-goatcounter-title="front-install-button">
       <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v10m0 0-4-4m4 4 4-4M4 16h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Install Pre-op List Prep
     </button>
@@ -109,7 +109,7 @@ h2{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--mute
       <li><span><b>Add the details</b> for each patient, mostly with one-click buttons. Abnormal values are flagged, and Ward view shows one patient per screen on a phone or tablet.</span></li>
       <li><span><b>Save your work</b> as a Word file when you're done. You can reopen that file in the tool later to carry on.</span></li>
     </ol>
-    <p class="note">Patient details never leave your device: the tool runs entirely in your browser and uploads nothing. Use it on any computer, phone or tablet where you're permitted to access patient data.</p>
+    <p class="note">Patient details never leave your device: the tool runs entirely in your browser and uploads nothing. Use it on any computer, phone or tablet where you're permitted to access patient data. Anonymous usage counts (such as "a list was loaded") are collected to see how much it's used; nothing you type is ever sent.</p>
   </section>
   <p class="note" style="text-align:center">Built by NJ Cowley</p>
 </div>
@@ -121,5 +121,6 @@ addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e;
 btn.addEventListener('click', async () => { if (!deferred) return; deferred.prompt(); await deferred.userChoice; deferred = null; btn.hidden = true; });
 addEventListener('appinstalled', () => { btn.hidden = true; });
 </script>
+<script data-goatcounter="https://nickjc.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body>
 </html>
