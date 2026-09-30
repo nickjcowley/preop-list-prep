@@ -311,7 +311,7 @@ body.hosted #b-print{display:none!important}
   <div class="bar-inner">
     <div class="brand">
       <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="1.5" width="16" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 6.5h8M6 10h8M6 13.5h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      Pre-op List Prep <span class="ver" title="Version of this tool">v30 Sep 2026n</span>
+      Pre-op List Prep <span class="ver" title="Version of this tool">v30 Sep 2026o</span>
     </div>
     <div class="meta" id="meta" hidden>
       <span>Date <input id="m-date" size="10"></span>
@@ -1089,7 +1089,11 @@ function rebuildFromOwnTable({rows, loose}){
     if (!r.some(c => clean(c))) continue;
     const o = {};
     // patient: name, Call me, Hosp, NHS, "F · 41y · DOB", ward, priority
-    const pl = cellLines(r, 'pt'); o.name = pl.shift() || '';
+    // the name can run over several lines (e.g. first name / SURNAME): take every line before the first recognised one
+    const pl = cellLines(r, 'pt');
+    const known = l => /^(Call me:|Hosp\s|NHS\s)/i.test(l) || (/·/.test(l) && /\d{1,2}\/\d{1,2}\/\d{2,4}/.test(l));
+    const nameLines = []; while (pl.length && !known(pl[0])) nameLines.push(pl.shift());
+    o.name = nameLines.join(' ');
     for (const l of pl){
       let m;
       if ((m = l.match(/^Call me:\s*(.*)/i))) o.callme = m[1];
