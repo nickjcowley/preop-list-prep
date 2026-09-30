@@ -299,7 +299,7 @@ body.hosted #b-print{display:none!important}
   <div class="bar-inner">
     <div class="brand">
       <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="1.5" width="16" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 6.5h8M6 10h8M6 13.5h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      Pre-op List Prep <span class="ver" title="Version of this tool">v30 Sep 2026i</span>
+      Pre-op List Prep <span class="ver" title="Version of this tool">v30 Sep 2026j</span>
     </div>
     <div class="meta" id="meta" hidden>
       <span>Date <input id="m-date" size="10"></span>
@@ -1288,7 +1288,7 @@ if (sharedMatch && 'caches' in window){
       const bytes = new Uint8Array(await r.arrayBuffer()); await c.delete('shared-file');
       return loadBytes(bytes, name);
     }
-    const what = info.length ? 'It received: ' + info.join('; ') + '.' : 'Nothing came through with the share.';
+    const what = info.length ? 'It received: ' + info.join('; ') + '.' : (sharedMatch[1] === '1' ? 'The app was still running its previous version: open Pre-op Prep once, close it fully, then share again.' : 'Nothing came through with the share.');
     const link = info.some(x => /^(url|text):/.test(x));
     toast((link ? 'A link was shared rather than the file itself. Save the file and share it from Files or Downloads, or use Open list. ' : 'No Word file arrived with the share. Use Open list instead. ') + what, 12000);
   }).catch(() => toast('The shared file could not be opened. Use Open list instead.', 6000));
