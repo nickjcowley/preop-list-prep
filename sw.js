@@ -1,7 +1,7 @@
 // Pre-op List Prep service worker.
 // Keeps an offline copy of the app (always tries the network first, so updates arrive straight away),
 // and receives Word files shared to the installed app on Android.
-const CACHE = 'preop-app-v3';
+const CACHE = 'preop-app-v4';
 const SHELL = ['./', './index.html', './preop-list-prep.html', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png'];
 
@@ -18,7 +18,7 @@ self.addEventListener('fetch', e => {
   // a file shared into the app: park it, then open the app, which picks it up
   if (e.request.method === 'POST' && url.pathname.endsWith('/share-target')){
     e.respondWith((async () => {
-      let got = 'none'; const seen = []; let probeBytes = null;
+      let got = 'none'; const seen = [], texts = []; let probeBytes = null;
       try {
         // record what actually arrived, for troubleshooting
         const probe = await e.request.clone().arrayBuffer().catch(() => null); probeBytes = probe;
@@ -28,10 +28,11 @@ self.addEventListener('fetch', e => {
         let file = null;
         for (const [k, v] of form.entries()){
           if (v && typeof v === 'object' && 'size' in v){ seen.push(`${v.name || '?'} (${v.type || 'no type'}, ${v.size} bytes)`); if (!file && v.size) file = v; }
-          else if (v) seen.push(`${k}: ${String(v).slice(0, 80)}`);
+          else if (v){ seen.push(`${k}: ${String(v).slice(0, 80)}${String(v).length > 80 ? '…' : ''} (${String(v).length} characters)`); texts.push(String(v)); }
         }
         const c = await caches.open('preop-shared');
         await c.put('shared-info', new Response(JSON.stringify(seen)));
+        if (texts.length) await c.put('shared-text', new Response(JSON.stringify(texts)));
         if (file){
           await c.put('shared-file', new Response(file, {headers: {'X-Name': encodeURIComponent(file.name || 'shared file')}}));
           got = 'file';
