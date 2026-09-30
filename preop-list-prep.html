@@ -75,6 +75,13 @@ main{max-width:1180px;margin:0 auto;padding-block:12px 60px;padding-inline:16px}
 .drop p{margin:0;color:var(--muted);max-width:60ch}
 .drop .row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .privacy{font-size:12px;color:var(--muted)}
+.quick{display:none;gap:8px;justify-content:center;flex-wrap:wrap}
+.quick .btn{padding:10px 18px;font-size:15px}
+@media (max-width:700px){ .quick{display:flex} }
+.pastebox{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;justify-content:center;width:100%;max-width:520px}
+.pastezone{flex:1 1 220px;min-height:38px;border:1.5px dashed var(--line);border-radius:var(--r);padding:8px 10px;background:var(--surface-2);text-align:left;font-size:13.5px;color:var(--muted);overflow:hidden;max-height:60px}
+.pastezone:empty::before{content:attr(data-ph);color:var(--muted);opacity:.8;font-style:italic}
+.pastezone:focus{outline:none;border-color:var(--accent);background:var(--surface)}
 .demos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:640px;width:100%;margin-top:4px}
 .demos-lbl{grid-column:1 / -1;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 .demo{display:grid;gap:4px;text-align:left;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:12px 14px;cursor:pointer;color:var(--ink)}
@@ -304,7 +311,7 @@ body.hosted #b-print{display:none!important}
   <div class="bar-inner">
     <div class="brand">
       <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="1.5" width="16" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 6.5h8M6 10h8M6 13.5h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      Pre-op List Prep <span class="ver" title="Version of this tool">v30 Sep 2026l</span>
+      Pre-op List Prep <span class="ver" title="Version of this tool">v30 Sep 2026m</span>
     </div>
     <div class="meta" id="meta" hidden>
       <span>Date <input id="m-date" size="10"></span>
@@ -339,6 +346,7 @@ body.hosted #b-print{display:none!important}
       <h1>Pre-op List Prep</h1>
       <p class="tagline">Bluespier theatre list → anaesthetic pre-op sheet</p>
       <p class="lead">Prepare tomorrow's theatre list in one place. Load the Bluespier list, then quickly add what you find in the pre-op assessment, previous anaesthetic charts, Evolve and ICE (bloods). You end up with a clear, printable sheet for the whole list.</p>
+      <div class="quick"><button class="btn primary" type="button" data-quick="open">Open list…</button><button class="btn" type="button" data-quick="paste">Paste list</button></div>
       <ol class="flow">
         <li><b>Load the list</b><span>Bring in the theatre list from Bluespier. Empty rows are removed and each patient gets a colour-coded card.</span></li>
         <li><b>Add the details</b><span>Height and weight (BMI worked out), bloods, PMH, drugs, allergies, airway, investigations and plan, mostly with one-click buttons. Abnormal values are flagged.</span></li>
@@ -350,9 +358,16 @@ body.hosted #b-print{display:none!important}
     <ol class="howto">
       <li>In Bluespier, double-click the blue title field of the operating list.</li>
       <li>On the Theatre List tab on the left, select <i>Send to Word</i>.</li>
-      <li>When the list opens in Word, either save it (Word or .rtf) and drop it here, or press <b>Ctrl+A</b>, <b>Ctrl+C</b>, then <b>Ctrl+V</b> on this page.</li>
+      <li>When the list opens in Word, either save it (Word or .rtf) and drop it here, or select all, copy, and paste it here: <b>Ctrl+A</b>, <b>Ctrl+C</b>, then <b>Ctrl+V</b> on a computer, or the <b>Paste list</b> button on a phone.</li>
     </ol>
     <p>You can also click <b>Open list</b> to pick the file.</p>
+    <div class="pastebox">
+      <button class="btn" id="b-paste" type="button">
+        <svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><rect x="5" y="3.5" width="10" height="14" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 3.5h4v2.2H8z" fill="currentColor"/></svg>
+        Paste list
+      </button>
+      <div id="pastezone" class="pastezone" contenteditable="true" role="textbox" aria-label="Paste the copied list here" data-ph="…or long-press here and choose Paste"></div>
+    </div>
     <div class="row">
       <button class="btn primary" id="b-open2">Open list…</button>
     </div>
@@ -1222,12 +1237,44 @@ addEventListener('dragover', e => e.preventDefault());
 addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; $('#empty .drop').classList.remove('hot'); const f = e.dataTransfer.files[0]; if (f){ if (list && dirty && !armOpen()) { toast('You have unsaved work. Drop again to replace it.'); return; } loadFile(f); } });
 
 // paste a table copied from Word
+// a table copied from Word can arrive as HTML, RTF or tab-separated text (Word on phones)
+function tryTextList(t){
+  t = String(t || '');
+  if (/\{\\rtf/.test(t)){ loadText(t); return true; }
+  if (/hospital\s*no|nhs\s*no/i.test(t) && /\t/.test(t)){
+    try { openParsed({rows: t.split(/\r?\n/).map(l => l.split('\t')), loose: t.split(/\r?\n/)}); return true; } catch (err) { toast(err.message, 6000); return true; }
+  }
+  return false;
+}
+function tryHtmlList(html){ if (html && /<table/i.test(html)){ loadText(html); return true; } return false; }
+const notAList = () => toast("That doesn't look like the theatre list. In Word, select all (including the table), copy, then paste here.", 6000);
 addEventListener('paste', e => {
   if (e.target.closest && e.target.closest('input,textarea,select')) return;
   const html = e.clipboardData.getData('text/html'); const txt = e.clipboardData.getData('text/plain');
-  if (html && /<table/i.test(html)){ e.preventDefault(); loadText(html); }
-  else if (/\{\\rtf/.test(txt)){ e.preventDefault(); loadText(txt); }
+  if (tryHtmlList(html) || tryTextList(txt)){ e.preventDefault(); $('#pastezone').innerHTML = ''; return; }
+  if (e.target.closest && e.target.closest('#pastezone')){ e.preventDefault(); notAList(); }
 });
+// phones: some keyboards insert pasted content without a paste event, so check the box after any input
+$('#pastezone').addEventListener('input', () => setTimeout(() => {
+  const z = $('#pastezone'); const html = z.innerHTML, txt = z.innerText;
+  if (!txt.trim() && !/<table/i.test(html)) return;
+  z.innerHTML = '';
+  if (!(tryHtmlList(html) || tryTextList(txt))) notAList();
+}, 50));
+// one-tap paste button (the phone may ask permission the first time)
+document.querySelectorAll('[data-quick]').forEach(b => b.onclick = () => (b.dataset.quick === 'open' ? openPicker() : $('#b-paste').click()));
+$('#b-paste').onclick = async () => {
+  try {
+    if (navigator.clipboard && navigator.clipboard.read){
+      const items = await navigator.clipboard.read();
+      for (const it of items) if (it.types.includes('text/html') && tryHtmlList(await (await it.getType('text/html')).text())) return;
+      for (const it of items) if (it.types.includes('text/plain') && tryTextList(await (await it.getType('text/plain')).text())) return;
+      return notAList();
+    }
+    if (tryTextList(await navigator.clipboard.readText())) return;
+    notAList();
+  } catch (err) { toast('Your phone blocked the Paste button. Long-press the box next to it and choose Paste instead.', 6000); $('#pastezone').focus(); }
+};
 
 addEventListener('keydown', e => {
   const mod = e.ctrlKey || e.metaKey, key = e.key.toLowerCase();
@@ -1315,9 +1362,7 @@ if (sharedMatch && 'caches' in window){
     // some apps share the document as text: if it contains the theatre list table, read it from that
     const txR = await c.match('shared-text'); const texts = txR ? await txR.json().catch(() => []) : []; await c.delete('shared-text');
     const tableText = texts.find(t => /hospital\s*no|nhs\s*no/i.test(t) && /\t/.test(t));
-    if (tableText){
-      try { return openParsed({rows: tableText.split(/\r?\n/).map(l => l.split('\t')), loose: tableText.split(/\r?\n/)}); } catch (err) {}
-    }
+    if (tableText && tryTextList(tableText)) return;
     showShareProblem(info, texts, sharedMatch[1]);
   }).catch(() => toast('The shared file could not be opened. Use Open list instead.', 6000));
 }
