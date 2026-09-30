@@ -318,7 +318,7 @@ body.hosted #b-print{display:none!important}
   <div class="bar-inner">
     <div class="brand">
       <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="1.5" width="16" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 6.5h8M6 10h8M6 13.5h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      Pre-op List Prep <span class="ver" title="Version of this tool">v30 Sep 2026r</span>
+      Pre-op List Prep <span class="ver" title="Version of this tool">v30 Sep 2026s</span>
     </div>
     <div class="meta" id="meta" hidden>
       <span>Date <input id="m-date" size="10"></span>
@@ -404,15 +404,25 @@ body.hosted #b-print{display:none!important}
    Only fixed labels are sent, e.g. "event/list-loaded". Nothing typed into the tool, no names, no file names. */
 const GC_ENDPOINT = 'https://nickjc.goatcounter.com/count';
 const gcQueue = []; const gcOnce = new Set();
+// "don't count this device": tap the version label 5 times, or open the tool with #nocount (#count to undo).
+// Also sets GoatCounter's own 'skipgc' flag so the front page (same website) stops counting this browser too.
+const NOCOUNT = 'preop-nocount';
+const counting = () => { try { return localStorage.getItem(NOCOUNT) !== '1'; } catch (e) { return true; } };
+function setCounting(on){
+  try { if (on){ localStorage.removeItem(NOCOUNT); localStorage.removeItem('skipgc'); } else { localStorage.setItem(NOCOUNT, '1'); localStorage.setItem('skipgc', 't'); } } catch (e) {}
+  setTimeout(() => toast(on ? 'Usage counting is back on for this device.' : "This device won't be counted in the usage figures.", 4000), 0);
+}
+if (/^#(nocount|count)$/.test(location.hash)){ setCounting(location.hash === '#count'); history.replaceState(null, '', location.pathname + location.search); }
 function track(name, {pageview = false, once = false} = {}){
   if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return; // not while testing
+  if (!counting()) return;
   if (once){ if (gcOnce.has(name)) return; gcOnce.add(name); }
   const hit = {path: pageview ? name : 'event/' + name, title: name, event: !pageview};
   if (window.goatcounter && typeof window.goatcounter.count === 'function'){ try { window.goatcounter.count(hit); } catch (e) {} }
   else gcQueue.push(hit);
 }
 (function loadCounter(){
-  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return;
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || !counting()) return;
   window.goatcounter = {no_onload: true, allow_local: true, allow_frame: true};
   const sc = document.createElement('script'); sc.async = true; sc.src = 'https://gc.zgo.at/count.js'; sc.dataset.goatcounter = GC_ENDPOINT;
   sc.onload = () => { while (gcQueue.length){ try { window.goatcounter.count(gcQueue.shift()); } catch (e) {} } };
@@ -1505,6 +1515,8 @@ function showUpdate(v){
 addEventListener('load', () => setTimeout(() => checkForUpdate(true), 1500));
 track(location.protocol === 'file:' ? 'open-offline-file' : (matchMedia('(display-mode: standalone)').matches || navigator.standalone) ? 'open-installed-app' : 'open-website', {pageview: true});
 addEventListener('appinstalled', () => track('app-installed'));
+// five quick taps on the version label toggles counting for this device
+{ let taps = 0, tapT; document.querySelector('.ver')?.addEventListener('click', () => { clearTimeout(tapT); tapT = setTimeout(() => taps = 0, 2500); if (++taps >= 5){ taps = 0; setCounting(!counting()); } }); }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(false); });
 setInterval(() => checkForUpdate(false), 60 * 60 * 1000);
 
