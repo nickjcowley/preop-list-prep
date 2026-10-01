@@ -78,10 +78,6 @@ main{max-width:1180px;margin:0 auto;padding-block:12px 60px;padding-inline:16px}
 .quick{display:none;gap:8px;justify-content:center;flex-wrap:wrap}
 .quick .btn{padding:10px 18px;font-size:15px}
 @media (max-width:700px){ .quick{display:flex} }
-.pastebox{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;justify-content:center;width:100%;max-width:520px}
-.pastezone{flex:1 1 220px;min-height:38px;border:1.5px dashed var(--line);border-radius:var(--r);padding:8px 10px;background:var(--surface-2);text-align:left;font-size:13.5px;color:var(--muted);overflow:hidden;max-height:60px}
-.pastezone:empty::before{content:attr(data-ph);color:var(--muted);opacity:.8;font-style:italic}
-.pastezone:focus{outline:none;border-color:var(--accent);background:var(--surface)}
 .demos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:640px;width:100%;margin-top:4px}
 .demos-lbl{grid-column:1 / -1;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 .demo{display:grid;gap:4px;text-align:left;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:12px 14px;cursor:pointer;color:var(--ink)}
@@ -319,7 +315,7 @@ body.hosted #b-print{display:none!important}
   <div class="bar-inner">
     <div class="brand">
       <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="1.5" width="16" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 6.5h8M6 10h8M6 13.5h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      Pre-op List Prep <span class="ver" title="Version of this tool">v30 Sep 2026t</span>
+      Pre-op List Prep <span class="ver" title="Version of this tool">v1 Oct 2026a</span>
     </div>
     <div class="meta" id="meta" hidden>
       <span>Date <input id="m-date" size="10"></span>
@@ -369,15 +365,12 @@ body.hosted #b-print{display:none!important}
       <li>When the list opens in Word, either save it (Word or .rtf) and drop it here, or select all, copy, and paste it here: <b>Ctrl+A</b>, <b>Ctrl+C</b>, then <b>Ctrl+V</b> on a computer, or the <b>Paste list</b> button on a phone.</li>
     </ol>
     <p>You can also click <b>Open list</b> to pick the file.</p>
-    <div class="pastebox">
+    <div class="row">
+      <button class="btn primary" id="b-open2">Open list…</button>
       <button class="btn" id="b-paste" type="button">
         <svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><rect x="5" y="3.5" width="10" height="14" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 3.5h4v2.2H8z" fill="currentColor"/></svg>
         Paste list
       </button>
-      <div id="pastezone" class="pastezone" contenteditable="true" role="textbox" aria-label="Paste the copied list here" data-ph="…or long-press here and choose Paste"></div>
-    </div>
-    <div class="row">
-      <button class="btn primary" id="b-open2">Open list…</button>
     </div>
     <div class="demos">
       <span class="demos-lbl">Or explore with made-up patients</span>
@@ -385,7 +378,7 @@ body.hosted #b-print{display:none!important}
       <button class="demo" id="b-demo-full" type="button"><b>See a completed example</b><span>Four patients with every field filled in, to show everything the tool captures, flags and prints.</span></button>
     </div>
     </div>
-    <p class="privacy">Everything stays in this browser window. Nothing is uploaded, and nothing is kept after you close the tab, so save the Word file when you're done. You can reopen that saved file here later to carry on editing. Anonymous usage counts (such as "a list was loaded") are collected to see how much the tool is used; nothing you type is ever sent.</p>
+    <p class="privacy">Everything stays in this browser window. Nothing is uploaded, and nothing is kept after you close the tab, so save the Word file when you're done. You can reopen that saved file here later to carry on editing.</p>
   </section>
 
   <div class="summary" id="summary" hidden></div>
@@ -1406,16 +1399,8 @@ const notAList = () => toast("That doesn't look like the theatre list. In Word, 
 addEventListener('paste', e => {
   if (e.target.closest && e.target.closest('input,textarea,select')) return;
   const html = e.clipboardData.getData('text/html'); const txt = e.clipboardData.getData('text/plain');
-  if (tryHtmlList(html) || tryTextList(txt)){ e.preventDefault(); $('#pastezone').innerHTML = ''; return; }
-  if (e.target.closest && e.target.closest('#pastezone')){ e.preventDefault(); notAList(); }
+  if (tryHtmlList(html) || tryTextList(txt)){ e.preventDefault(); return; }
 });
-// phones: some keyboards insert pasted content without a paste event, so check the box after any input
-$('#pastezone').addEventListener('input', () => setTimeout(() => {
-  const z = $('#pastezone'); const html = z.innerHTML, txt = z.innerText;
-  if (!txt.trim() && !/<table/i.test(html)) return;
-  z.innerHTML = '';
-  if (!(tryHtmlList(html) || tryTextList(txt))) notAList();
-}, 50));
 // one-tap paste button (the phone may ask permission the first time)
 document.querySelectorAll('[data-quick]').forEach(b => b.onclick = () => (b.dataset.quick === 'open' ? openPicker() : $('#b-paste').click()));
 $('#b-paste').onclick = async () => {
@@ -1428,7 +1413,7 @@ $('#b-paste').onclick = async () => {
     }
     if (tryTextList(await navigator.clipboard.readText())) return;
     notAList();
-  } catch (err) { toast('Your phone blocked the Paste button. Long-press the box next to it and choose Paste instead.', 6000); $('#pastezone').focus(); }
+  } catch (err) { toast('Pasting was blocked on this device. Allow clipboard access for the app, or use Open list instead.', 6000); }
 };
 
 addEventListener('keydown', e => {
